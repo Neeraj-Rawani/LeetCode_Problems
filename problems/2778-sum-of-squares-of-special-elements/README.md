@@ -1,0 +1,59 @@
+# 2778. Sum of Squares of Special Elements 
+
+**Difficulty:** Easy
+
+**LeetCode:** [Open Problem](https://leetcode.com/problems/sum-of-squares-of-special-elements/)
+
+---
+
+## Problem Description
+
+<p>You are given a <strong>1-indexed</strong> integer array <code>nums</code> of length <code>n</code>.</p>
+
+<p>An element <code>nums[i]</code> of <code>nums</code> is called <strong>special</strong> if <code>i</code> divides <code>n</code>, i.e. <code>n % i == 0</code>.</p>
+
+<p>Return <em>the <strong>sum of the squares</strong> of all <strong>special</strong> elements of </em><code>nums</code>.</p>
+
+
+<h3>Example 1</h3>
+
+<pre>
+<strong>Input:</strong> nums = [1,2,3,4]
+<strong>Output:</strong> 21
+<strong>Explanation:</strong> There are exactly 3 special elements in nums: nums[1] since 1 divides 4, nums[2] since 2 divides 4, and nums[4] since 4 divides 4. 
+Hence, the sum of the squares of all special elements of nums is nums[1] * nums[1] + nums[2] * nums[2] + nums[4] * nums[4] = 1 * 1 + 2 * 2 + 4 * 4 = 21.  
+</pre>
+
+<h3>Example 2</h3>
+
+<pre>
+<strong>Input:</strong> nums = [2,7,1,19,18,3]
+<strong>Output:</strong> 63
+<strong>Explanation:</strong> There are exactly 4 special elements in nums: nums[1] since 1 divides 6, nums[2] since 2 divides 6, nums[3] since 3 divides 6, and nums[6] since 6 divides 6. 
+Hence, the sum of the squares of all special elements of nums is nums[1] * nums[1] + nums[2] * nums[2] + nums[3] * nums[3] + nums[6] * nums[6] = 2 * 2 + 7 * 7 + 1 * 1 + 3 * 3 = 63. 
+</pre>
+
+
+<h2>Constraints</h2>
+
+<ul>
+	<li><code>1 <= nums.length == n <= 50</code></li>
+	<li><code>1 <= nums[i] <= 50</code></li>
+</ul>
+
+---
+
+## Topics
+
+- Array
+- Enumeration
+
+---
+
+## My Solution
+
+**Language:** C++
+
+[View Solution](./solution.cpp)
+
+---
