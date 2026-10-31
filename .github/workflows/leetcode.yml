@@ -5,9 +5,9 @@ on:
     branches:
       - main
     paths:
-      # Numbered code files in the repository root, e.g. 20.cpp or 42.py.
+      # Numbered solution files in the repository root, e.g. 20.cpp or 42.py.
       - "*.*"
-      # Let changes to the automation be tested through Actions too.
+      # Run the workflow when its automation code changes too.
       - ".github/scripts/**"
       - ".github/workflows/leetcode.yml"
 
@@ -16,15 +16,23 @@ on:
 permissions:
   contents: write
 
+# Prevent two runs from modifying the same repository at the same time.
+concurrency:
+  group: leetcode-generator-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   generate:
-    # Avoid running again on the commit made by this workflow.
+    # Do not start another run for the commit created by this workflow.
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v7
@@ -32,13 +40,14 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: python -m pip install --upgrade requests
+        run: python -m pip install --disable-pip-version-check --upgrade requests
 
+      # The Python script retries each temporary API failure individually.
       - name: Generate LeetCode problem folders
-        run: python .github/scripts/generate_leetcode.py
+        run: python -u .github/scripts/generate_leetcode.py
 
-      # Only delete files explicitly listed by the successful Python run.
-      # If Python fails, GitHub Actions skips this step automatically.
+      # This step runs only when generation succeeds.
+      # The manifest contains only source files whose folders were generated.
       - name: Remove processed root solution files
         shell: bash
         run: |
@@ -53,8 +62,9 @@ jobs:
           while IFS= read -r file; do
             [[ -n "$file" ]] || continue
 
-            # Extra guard: only allow a root-level numeric filename with one extension.
             filename="$(basename "$file")"
+
+            # Only permit a root-level numeric filename with one extension.
             if [[ "$file" != "$filename" || ! "$filename" =~ ^[0-9]+\.[A-Za-z0-9]+$ ]]; then
               echo "::error::Refusing to remove unexpected path: $file"
               exit 1
@@ -72,6 +82,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
