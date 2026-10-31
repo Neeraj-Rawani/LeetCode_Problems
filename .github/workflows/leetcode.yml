@@ -26,7 +26,7 @@ jobs:
     # Do not start another run for the commit created by this workflow.
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -42,12 +42,13 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check --upgrade requests
 
-      # The Python script retries each temporary API failure individually.
+      # Python first tries the live API. If it returns a persistent 5xx/timeout,
+      # it falls back to the independent daily-updated question database.
       - name: Generate LeetCode problem folders
         run: python -u .github/scripts/generate_leetcode.py
 
-      # This step runs only when generation succeeds.
-      # The manifest contains only source files whose folders were generated.
+      # This step runs only when every requested problem has been generated.
+      # The manifest lists only files that were successfully processed.
       - name: Remove processed root solution files
         shell: bash
         run: |

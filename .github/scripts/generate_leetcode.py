@@ -40,13 +40,27 @@ MANIFEST_PATH = (
 
 API_URL = "https://leetcode-api-pied.vercel.app"
 
-# API requests are retried individually for temporary failures such as HTTP 504.
-MAX_API_ATTEMPTS = 4
+# Independent fallback: the API project's daily-updated full question dataset.
+# It contains GraphQL question records with questionFrontendId, title, content,
+# difficulty and topicTags, so we can still generate a README when the Vercel
+# endpoint returns 502/503/504.
+FALLBACK_DATASET_URL = (
+    "https://raw.githubusercontent.com/noworneverev/leetcode-api/"
+    "main/data/leetcode_questions.json"
+)
+
+# Retry the live endpoint briefly, then switch to the independent cached dataset.
+MAX_API_ATTEMPTS = 2
 API_TIMEOUT = (10, 30)  # (connection timeout, response/read timeout)
+DATASET_TIMEOUT = (15, 180)
+MAX_DATASET_ATTEMPTS = 3
 BASE_RETRY_DELAY = 2
 MAX_RETRY_DELAY = 30
 MAX_RETRY_AFTER = 60
 RETRYABLE_HTTP_STATUSES = {408, 425, 429, 500, 502, 503, 504}
+
+# Loaded only if the live API fails. Cache in memory for all remaining problems.
+QUESTION_INDEX: dict[str, dict[str, Any]] | None = None
 
 # These extensions are metadata/configuration, not solution files.
 IGNORED_EXTENSIONS = {
@@ -80,17 +94,3 @@ LANGUAGE_MAP = {
     ".tsx": "TypeScript / React",
     ".go": "Go",
     ".rs": "Rust",
-    ".rb": "Ruby",
-    ".php": "PHP",
-    ".swift": "Swift",
-    ".dart": "Dart",
-    ".scala": "Scala",
-    ".sc": "Scala",
-    ".r": "R",
-    ".jl": "Julia",
-    ".lua": "Lua",
-    ".pl": "Perl",
-    ".pm": "Perl",
-    ".sh": "Shell",
-    ".bash": "Bash",
-    ".zsh": "Zsh",
