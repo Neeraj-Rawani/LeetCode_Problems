@@ -1,14 +1,14 @@
-name: Generate LeetCode Problem
+name: Generate LeetCode Problem Folders
 
 on:
   push:
     branches:
       - main
     paths:
-      # Numbered solution files in the repository root, e.g. 20.cpp or 42.py.
+      # Numbered source files in the repository root, e.g. 20.cpp or 42.py.
       - "*.*"
-      # Run the workflow when its automation code changes too.
-      - ".github/scripts/**"
+      # Changes to this automation should also run the workflow.
+      - ".github/scripts/generate_leetcode.py"
       - ".github/workflows/leetcode.yml"
 
   workflow_dispatch:
@@ -16,17 +16,16 @@ on:
 permissions:
   contents: write
 
-# Prevent two runs from modifying the same repository at the same time.
+# Queue runs instead of allowing two runs to delete/commit the same files.
 concurrency:
   group: leetcode-generator-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   generate:
-    # Do not start another run for the commit created by this workflow.
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
@@ -42,14 +41,19 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check --upgrade requests
 
-      # Python first tries the live API. If it returns a persistent 5xx/timeout,
-      # it falls back to the independent daily-updated question database.
+      # A partial failure is allowed to continue so successful problem folders
+      # can still be committed. Failed source files are NOT in the manifest.
       - name: Generate LeetCode problem folders
-        run: python -u .github/scripts/generate_leetcode.py
+        id: generator
+        continue-on-error: true
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python .github/scripts/generate_leetcode.py
 
-      # This step runs only when every requested problem has been generated.
-      # The manifest lists only files that were successfully processed.
-      - name: Remove processed root solution files
+      # This runs after a partial generator failure too. The manifest contains
+      # only the original files whose problem folders were generated correctly.
+      - name: Remove successfully processed root solution files
+        if: always() && steps.generator.outcome != 'cancelled'
         shell: bash
         run: |
           set -euo pipefail
@@ -63,10 +67,8 @@ jobs:
           while IFS= read -r file; do
             [[ -n "$file" ]] || continue
 
-            filename="$(basename "$file")"
-
-            # Only permit a root-level numeric filename with one extension.
-            if [[ "$file" != "$filename" || ! "$filename" =~ ^[0-9]+\.[A-Za-z0-9]+$ ]]; then
+            # Manifest entries must be root-level numeric source filenames.
+            if [[ "$file" == */* || ! "$file" =~ ^[0-9]+\.[A-Za-z0-9]+$ ]]; then
               echo "::error::Refusing to remove unexpected path: $file"
               exit 1
             fi
@@ -79,7 +81,9 @@ jobs:
             git rm -- "$file"
           done < "$manifest"
 
-      - name: Commit generated files
+      # Commit successful output even when another problem failed.
+      - name: Commit generated problem folders
+        if: always() && steps.generator.outcome != 'cancelled'
         shell: bash
         run: |
           set -euo pipefail
@@ -92,6 +96,15 @@ jobs:
           if git diff --cached --quiet; then
             echo "No generated changes to commit."
           else
-            git commit -m "docs: generate LeetCode problem"
-            git push
+            git commit -m "docs: generate LeetCode problem folders"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
+
+      # Keep the workflow visibly red when at least one problem could not be
+      # fetched. Successful problems are already committed; failed inputs remain.
+      - name: Report incomplete generation
+        if: always() && steps.generator.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::error::Some LeetCode problems failed. Successful results were committed; failed source files were preserved. Re-run the workflow after the API recovers."
+          exit 1
